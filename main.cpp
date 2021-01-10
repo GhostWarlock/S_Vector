@@ -3,35 +3,12 @@
 #include <vector>
 #include <string>
 
-using namespace std;
 int main() {
-    std::cout << "Hello, World!" << std::endl;
+    std::cout << "Waiting for update." << std::endl;
+    S_Vector<int> i_test1;
+    S_Vector<int> i_test2(5);
+    S_Vector<std::string> i_test3(5,"initial value");
 
-    S_Vector<vector<int> *> temp;
-    int K = 50;
-    for(int i = 0; i<K; ++i){
-        temp.push_back(new vector<int>(1,i));
-        cout << "size:" << temp.size() << "\tcapacity:" << temp.capacity()  << "\taddr:"<< &temp[0] << endl;
-    }
-
-//    for(int i = 0; i<K/2; ++i){
-//        temp.pop_back();
-//        cout << "size:" << temp.size() << "\tcapacity:" << temp.capacity()  << "\taddr:"<< &temp[0] << endl;
-//    }
-
-    temp.erase(temp.begin()+2,temp.begin()+8);
-    temp.erase(temp.end()-1);
-    cout << "size:" << temp.size() << "\tcapacity:" << temp.capacity()  << "\taddr:"<< endl;
-    //temp.erase(2,5);
-//    temp.clear();
-//    cout << "size:" << temp.size() << "\tcapacity:" << temp.capacity()  << "\taddr:"<< endl;
-//    S_Vector<int> tt = temp;
-//    cout << "size:" << tt.size() << "\tcapacity:" << tt.capacity()  << "\taddr:"<< &tt[0] << endl;
-
-    for(unsigned int i=0; i<temp.size(); ++i){
-        cout << temp.at(i)->data()[0] << endl;
-    }
-
-
+    // Waiting for update.
     return 0;
 }
