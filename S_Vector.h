@@ -4,323 +4,324 @@
 
 #ifndef S_VECTOR_S_VECTOR_H
 #define S_VECTOR_S_VECTOR_H
-template <typename data_type>
+
+template <typename T>
 class S_Vector {
-
 public:
-    S_Vector() = default;
-    explicit S_Vector(unsigned int size);
-    S_Vector(unsigned int size, data_type value);
-    S_Vector(S_Vector& x);
-    bool reserve(const unsigned int &new_capacity);
-    int resize(unsigned int new_size);
-    int resize(unsigned int new_size,data_type value);
-    S_Vector<data_type>& operator= (const S_Vector<data_type>& x);         // copy
-    S_Vector<data_type>& operator= (S_Vector<data_type>&& x) noexcept;     // move
-    data_type& operator[] (unsigned int pos);
-    const data_type& operator[] (unsigned int pos) const;
+    typedef T value_type;
+    typedef value_type* iterator;     //对于vector的线性存储结构，普通指针就可以实现迭代器的功能 因此 iterator类型为value_type
+    // for vector memory structure, an ordinary pointer can realize the function of iterator
+    // so sets the iterator type as value_ type pointer
+public:
+    S_Vector() = default;                 // Constructs an empty container, with no elements.
+    explicit S_Vector(size_t n);          // Constructs a container with n elements.
+    S_Vector(size_t n, value_type value); // Constructs a container with n elements. initialize with the value.
+    S_Vector(S_Vector& x);                // Constructs a container with a copy of each of the elements in x, in the same order.
 
-    int length();
-    int size();
-    int capacity();
-    int push_back(const data_type &value);
-    int pop_back();
-    int insert(const unsigned int &pos, const data_type &value);
-    int insert(const unsigned int &pos, const unsigned int &n, const data_type &value);
-    data_type at(unsigned int pos);
-    int begin(){return 0;};
-    int end(){return data_size;};
-    unsigned int erase(const unsigned int &pos);
-    unsigned int erase(const unsigned int &start_pos, const unsigned int &end_pos);
+    void reserve(const size_t &new_capacity);      // changes the storage capacity
+    void resize(size_t new_size);                  // changes vector size  Increase/decrease
+    void resize(size_t new_size,value_type value); // Increase vector size, fill with "value"
+
+    S_Vector<value_type>& operator= (const S_Vector<value_type>& x);         // copy
+    S_Vector<value_type>& operator= (S_Vector<value_type>&& x) noexcept;     // move
+    value_type& operator[] (size_t pos);
+    const value_type& operator[] (size_t pos) const;
+
+    size_t length();       // gets vector length
+    size_t size();         // gets vector size, Equal to length
+    size_t capacity();     // gets the storage capacity
+
+    void push_back(const value_type &value);      // adds a new element at the end of the vector,
+    void pop_back();                              // removes the last element in the vector,
+
+    iterator insert(const iterator &pos, const value_type &value);  // inserts a element in specified pos
+    iterator insert(const iterator &pos, const size_t &n, const value_type &value);  // inserts n elements from specified pos
+
+    value_type at(const iterator &pos);    // gets the value at "pos"
+    iterator begin(){return start;};       // gets vector start iterator
+    iterator end(){return finish;};        // gets vector end iterator
+    iterator erase(const iterator &pos);   // erases a element from specified pos
+    iterator erase(const iterator &start_pos, const iterator &end_pos); // erases elements from start_pos(included) to end_pos(included).
     void clear();
     ~S_Vector();
 
 private:
-    data_type * data = nullptr;
-    unsigned int data_size = 0;
-    unsigned int v_capacity = 0;
+    iterator start = nullptr;
+    iterator finish = nullptr;
+    iterator end_of_storage = nullptr;
+
+private:
+    void destroy(value_type &element){
+        element.~value_type();          // destroy an element by its destructor
+    }
+
 };
 
-template<typename data_type>
-S_Vector<data_type>::S_Vector(unsigned int size) {
-    if(size == 0) return;
-    this->data = new(std::nothrow) data_type[size];
-    if(this->data == nullptr) {
-//        exit(-1);                   // which is better?
-//        throw std::bad_alloc();
-        return;
+/**
+ * Create a vector of size n
+ * @tparam value_type
+ * @param size
+ */
+template<typename value_type>
+S_Vector<value_type>::S_Vector(size_t n) {
+    if(n == 0) return;
+    start = new value_type[n];
+    if(start == nullptr) {
+        throw std::bad_alloc();     // alloc failed, throw a bad_alloc exception
     }
-    else{
-        data_size = size;
-        v_capacity = size;
+    finish = start + n;             // success
+    end_of_storage = start + n;
+}
+
+/**
+ * Create a vector of size n. initialize with the value.
+ * @tparam value_type
+ * @param size
+ * @param value
+ */
+template <typename value_type>
+S_Vector<value_type>::S_Vector(size_t n, value_type value) : S_Vector(n){
+    if(start != nullptr) {
+        for(auto it = start; it != finish; it++)   // fill with specified value
+            *it = value;
     }
 }
 
-template <typename data_type>
-S_Vector<data_type>::S_Vector(unsigned int size, data_type value) : S_Vector(size){
-    if(this->data != nullptr) {
-        for(int i=0; i<size; ++i)
-            this->data[i] = value;
-    }
-}
-
-template<typename data_type>
-S_Vector<data_type>::S_Vector(S_Vector &x) {
-    this->data = new(std::nothrow) data_type[x.v_capacity];
-    if(this->data != nullptr){
-        for(int i=0; i<x.data_size; ++i){
-            this->data[i] = x.data[i];
+template<typename value_type>
+S_Vector<value_type>::S_Vector(S_Vector &x) {
+    size_t alloc_size = x.end_of_storage - x.start;
+    start = new value_type[alloc_size];     // alloc new memory
+    if(start != nullptr){
+        auto it_new = start;
+        for(auto it = x.start; it != x.finish; it++){
+            *it_new = *it;
+            it_new ++;
         }
-        data_size  = x.data_size;
-        v_capacity = x.v_capacity;
+        finish = start + x.size();
+        end_of_storage = start + alloc_size;
     }
+    else throw std::bad_alloc();   // alloc failed, throw a bad_alloc exception
 }
 
-template<typename data_type>
-bool S_Vector<data_type>::reserve(const unsigned int &new_capacity) {
-    if(new_capacity < v_capacity) return false;
-    auto * temp = new(std::nothrow) data_type[new_capacity];
-    if(temp == nullptr){
-//        exit(-1);                   // which is better?
-//        throw std::bad_alloc();
-        return false;
+template<typename value_type>
+void S_Vector<value_type>::reserve(const size_t &new_capacity) {
+    if(new_capacity <= (finish - start)) return;
+    auto * temp = new(std::nothrow) value_type[new_capacity];
+    if(temp == nullptr)
+        throw std::bad_alloc();   // alloc failed, throw a bad_alloc exception
+    size_t i = 0;
+    for(auto it = start; it != finish; it++) {  // copy data
+        *(temp + i) = *it;
+        ++i;
     }
-
-    for(int i=0; i<data_size; ++i){
-        temp[i] = this->data[i];
-    }
-    delete[] this->data;             // release
-    this->data = temp;
+    finish = temp + (finish - start);  // calculate new iterator value: base + n
+    delete[] start;                    // free old
+    start = temp;                      // update new
     temp = nullptr;
-    v_capacity = new_capacity;
-    return true;
+    end_of_storage = start + new_capacity;
 }
 
-template<typename data_type>
-int S_Vector<data_type>::resize(unsigned int new_size) {
-    if(new_size > data_size){
-        if(!reserve(new_size)) return -1;
+template<typename value_type>
+void S_Vector<value_type>::resize(size_t new_size) {
+    if(new_size > capacity()){   //checks whether the capacity is enough.
+        reserve(new_size);
     }
-    data_size = new_size;
-    return data_size;
+    finish = start + new_size;
 }
 
-template<typename data_type>
-int S_Vector<data_type>::resize(unsigned int new_size, data_type value) {
-    if(new_size > data_size){
-        if(reserve(new_size)) return -1;
-        for(;data_size != new_size; data_size ++)
-            this->data[data_size] = value;
+template<typename value_type>
+void S_Vector<value_type>::resize(size_t new_size, value_type value) {
+    if(new_size > capacity()){   //checks whether the capacity is enough.
+        reserve(new_size);
     }
-    data_size = new_size;
-    return data_size;
+    for(auto it = finish; (it-start) < new_size; ++it){
+        *it = value;             // fill with setting value
+    }
 }
 
-template<typename data_type>
-S_Vector<data_type> &S_Vector<data_type>::operator=(const S_Vector<data_type> &x) {
+template<typename value_type>
+S_Vector<value_type> &S_Vector<value_type>::operator=(const S_Vector<value_type> &x) {
     if(this == &x) return *this;
     this->clear();
-    if(this->data!= nullptr) delete[] this->data;               // release old memory
-    this->data = new(std::nothrow) data_type[x.v_capacity];     // alloc new memory
-    if(this->data != nullptr){
-        for(int i=0; i<x.data_size; ++i){     //copy data
-            this->data[i] = x.data[i];
+    if(start!= nullptr) delete[] start;                // release old memory
+    auto alloc_size = x.end_of_storage - x.start;      // same as x.capacity()
+    start = new value_type[alloc_size];                // alloc new memory
+    if(start != nullptr){
+        finish = start;
+        for(auto it = x.start; it<x.finish; ++it){     //copy data
+            *finish = *it;
+            finish ++;
         }
-        data_size  = x.data_size;
-        v_capacity = x.v_capacity;
+        end_of_storage = start + alloc_size;
     }
+    else throw std::bad_alloc();   // alloc failed, throw a bad_alloc exception
     return *this;
 }
 
-template<typename data_type>
-S_Vector<data_type> &S_Vector<data_type>::operator=(S_Vector<data_type> &&x) noexcept {
+template<typename value_type>
+S_Vector<value_type> &S_Vector<value_type>::operator=(S_Vector<value_type> &&x) noexcept {
     if(this == &x) return *this;
     this->clear();
-    if(this->data!= nullptr) delete[] this->data;               // release old memory
-    this->data = new(std::nothrow) data_type[x.v_capacity];     // alloc new memory
-    if(this->data != nullptr){                //copy data
-        for(int i=0; i<x.data_size; ++i){
-            this->data[i] = x.data[i];
+    if(start!= nullptr) delete[] start;                  // free old memory
+    auto alloc_size = x.end_of_storage - x.start;
+    start = new(std::nothrow) value_type[x.v_capacity];  // alloc new memory
+    if(start != nullptr){
+        start = finish = start;
+        for(auto it = x.start; it<x.finish; ++it){       //copy data
+            *finish = *it;
+            finish ++;
         }
-        data_size  = x.data_size;
-        v_capacity = x.v_capacity;
     }
+    end_of_storage = start + alloc_size;
     return *this;
 }
 
-template<typename data_type>
-data_type &S_Vector<data_type>::operator[](const unsigned int pos) {
-    if(pos < data_size) return this->data[pos];
+template<typename value_type>
+value_type &S_Vector<value_type>::operator[](const size_t pos) {
+    if(pos < (finish - start)) return *(start + pos);
     else{
         throw std::range_error("A cross-border access occurred.\r\nyour input pos exceeded the max_size.\r\n");
     }
 }
 
-template<typename data_type>
-const data_type &S_Vector<data_type>::operator[](unsigned int pos) const {
-    const data_type value = this->data[pos];
-    if(pos < data_size) return value;
+template<typename value_type>
+const value_type &S_Vector<value_type>::operator[](size_t pos) const {
+    if(pos < (finish - start)) return *(start + pos);
     else{
         throw std::range_error("A cross-border access occurred.\r\nyour input pos exceeded the max_size.\r\n");
     }
 }
 
-template <typename data_type>
-int S_Vector<data_type>::length() {
-    return data_size;
+template <typename value_type>
+size_t S_Vector<value_type>::length() {
+    return (finish - start);
 }
 
-template <typename data_type>
-int S_Vector<data_type>::size() {
-    return data_size;
+template <typename value_type>
+size_t S_Vector<value_type>::size() {
+    return (finish - start);
 }
 
-template <typename data_type>
-int S_Vector<data_type>::capacity() {
-    return v_capacity;
+template <typename value_type>
+size_t S_Vector<value_type>::capacity() {
+    return (end_of_storage - start);
 }
 
-template<typename data_type>
-int S_Vector<data_type>::push_back(const data_type &value) {
-    if(data_size == v_capacity) {                                     // dynamic capacity adjustment
-        if(!reserve(data_size == 0 ? 1 : data_size*2)){
-            return -1;
-        }
+template<typename value_type>
+void S_Vector<value_type>::push_back(const value_type &value) {
+    if(finish == end_of_storage) {                        // dynamic capacity adjustment
+        reserve(size() == 0 ? 1 : size()*2);
     }
-    this->data[data_size++] = value;
-    return data_size;
+    *finish = value;
+    finish ++;
 }
 
-template<typename data_type>
-int S_Vector<data_type>::pop_back() {
-    return data_size > 0 ? --data_size : -1;
+template<typename value_type>
+void S_Vector<value_type>::pop_back() {
+    // destroy
+    // How to destroy an object actively
+    // when using template class (the type of "value_type" always cannot be known)
+    destroy(*(finish-1));
+    if(finish != start) finish --;    // remove last elements
 }
 
-template<typename data_type>
-int S_Vector<data_type>::insert(const unsigned int &pos, const data_type &value) {
+template<typename value_type>
+typename S_Vector<value_type>::iterator S_Vector<value_type>::insert(const iterator &pos, const value_type &value) {
+    return insert(pos,1,value);
+}
 
-    if((this->data == nullptr && pos > 0)  || pos >= data_size) return -1;
-
-    unsigned int i=0, j=0;
-    if(data_size == v_capacity){
-        unsigned int new_capacity = data_size == 0 ? 1 : (data_size+1)*2;
-        auto * temp = new(std::nothrow) data_type[new_capacity];      // realloc
-        if(temp == nullptr){
-            return -1;
+template<typename value_type>
+typename S_Vector<value_type>::iterator S_Vector<value_type>::insert(const iterator &pos, const size_t &n, const value_type &value) {
+    if((capacity() == 0 && pos > 0) || (pos > finish)) return nullptr;    // insert failed
+    if(finish + n > end_of_storage){
+        size_t new_capacity = (size()+n)*2;              // double size
+        auto temp = new value_type[new_capacity];        // realloc
+        if(temp == nullptr) throw std::bad_alloc();      // throw exception
+        auto it_new = temp;
+        auto it_old = start;
+        for(; it_old < pos; ++it_old){                   // step1: copy elements before pos
+            *it_new = it_old;
+            it_new ++;
         }
-        while (j < data_size){                     // copy data
-            if(i!=pos) temp[i] = this->data[j++];
-            i++;
+        auto pos_new = it_new;                           // step2: fill n elements(followed)
+        for(size_t i = 0; i < n; ++i){
+            *it_new = value;
+            it_new ++;
         }
-        temp[pos] = value;
-        data_size ++;
-        v_capacity = new_capacity;
-        if(this->data != nullptr)                 // Free original memory
-            delete[] this->data;
-        this->data = temp;                        // new ptr
+        for(; it_old < finish; ++it_old){                // step3: copy elements after(include) pos
+            *it_new = it_old;
+            it_new ++;
+        }
+        if(start != nullptr)                       // Free original memory
+            delete[] start;
+        finish = temp + (finish - start) + n;
+        start = temp;                              // new ptr
         temp = nullptr;
+        return pos_new;
     }
     else{
-        i = data_size;
-        while (pos < i){                          // move data backward
-            this->data[i] = this->data[i-1];
-            i --;
+        auto it = finish > start ? finish - 1 : pos-1;
+        for(; it >= pos; it --){                    // step1: moves elements after(include) pos by n bits
+            *(it+n) = *it;
         }
-        data_size ++;
-        this->data[pos] = value;
+        for(size_t count = n; count >= 0; count--){ // step2: fill n elements
+            it++;
+            *it = value;
+        }
+        return pos;
     }
-    return static_cast<int>(pos);
+
 }
 
-template<typename data_type>
-int S_Vector<data_type>::insert(const unsigned int &pos, const unsigned int &n, const data_type &value) {
-
-    if(this->data == nullptr && pos > 0) return -1;
-
-    unsigned int i=0, j=0;
-    if((data_size+n) > v_capacity){
-        unsigned int new_capacity = data_size == 0 ? 1 : (data_size+n)*2;
-        auto * temp = new(std::nothrow) data_type[new_capacity];     // realloc
-        if(temp == nullptr){
-            return -1;
-        }
-        while (i != pos){
-            temp[i] = this->data[i];
-            i ++;
-        }
-        while(j != n){                     // fill the n data
-            temp[i++] = value;
-            j ++;
-        }
-        j = pos;
-        while(j < data_size){
-            temp[i++] = this->data[j++];
-        }
-        data_size += n;
-        v_capacity = new_capacity;
-        if(this->data != nullptr)
-            delete[] this->data;
-        this->data = temp;
-        temp = nullptr;
-    }
-    else{
-        i = data_size - 1;
-        j = i + n;
-        while(i >= pos){                          // move n units(sizeof(data_type)) backward
-            this->data[j--] = this->data[i--];
-        }
-        i = pos;
-        j = n;
-        while(j--){
-            this->data[i++] = value;
-        }
-        data_size += n;
-    }
-    return static_cast<int>(pos+n);
-}
-
-template<typename data_type>
-data_type S_Vector<data_type>::at(unsigned int pos) {
-    if(pos < data_size)
-        return this->data[pos];
+template<typename value_type>
+value_type S_Vector<value_type>::at(const iterator &pos) {
+    if(pos < finish)
+        return *pos;
     else
         throw std::range_error("A cross-border access occurred.\r\nyour input pos exceeded the max_size.\r\n");
 }
 
-template<typename data_type>
-unsigned int S_Vector<data_type>::erase(const unsigned int &start_pos, const unsigned int &end_pos) {
-    unsigned int offset_a = start_pos, offset_b = end_pos;
-    if(end_pos > data_size) offset_b = data_size;
-    for(;offset_b < data_size; offset_b++)
-        this->data[offset_a++] = this->data[offset_b];
-    data_size -= (end_pos - start_pos);
-    return start_pos;
-}
-
-template<typename data_type>
-unsigned int S_Vector<data_type>::erase(const unsigned int &pos) {
-    if(pos > data_size) return data_size;
-    unsigned int start_pos = pos;
-    for(unsigned int i=pos+1; i<data_size; ++i){
-        this->data[start_pos++] = this->data[i];
+template<typename value_type>
+typename S_Vector<value_type>::iterator S_Vector<value_type>::erase(const iterator &start_pos, const iterator &end_pos) {
+    auto it_a = start_pos, it_b = end_pos;
+    if(it_b > finish) it_b = finish;
+    auto res = it_b;
+    for(; (it_b+1) < finish; it_b++){   // moves forward data after end_pos to start_pos
+        destroy(*it_a);             // destroy
+        *it_a = *(it_b+1);
+        it_a ++;
     }
-    data_size -= 1;
-    return pos;
+    finish = it_a;      // update
+    return res;
 }
 
-template<typename data_type>
-void S_Vector<data_type>::clear() {
-    data_size = 0;
-//    v_capacity = 0;
-//    if(this->data)
-//        delete[] this->data;
-//    data = nullptr;
+template<typename value_type>
+typename S_Vector<value_type>::iterator S_Vector<value_type>::erase(const iterator &pos) {
+    auto it_a = pos;
+    if(it_a > finish) it_a = finish;
+    auto res = it_a;
+    for(; (it_a+1) < finish; it_a++){   // moves forward data after pos
+        destroy(*it_a);             // destroy
+        *it_a = *(it_a+1);
+    }
+    finish = it_a;
+    return res;
 }
 
-template<typename data_type>
-S_Vector<data_type>::~S_Vector() {
-    if(this->data != nullptr)
-        delete[] this->data;
+template<typename value_type>
+void S_Vector<value_type>::clear() {
+    for(auto it = start; it != finish; it++){
+        destroy(*it);
+    }
+    // destroy ???
+    finish = start;
+}
+
+template<typename value_type>
+S_Vector<value_type>::~S_Vector() {
+    clear();
+    if(start != nullptr)
+        delete[] start;
 }
 
 #endif //S_VECTOR_S_VECTOR_H

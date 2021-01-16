@@ -138,6 +138,8 @@ S_Vector Class is a simple implementation of **C++11 std::vector**, the use of b
 ## Update Log
 
 - Version: V1.0.&nbsp;&nbsp;&nbsp;&nbsp;*2021/01/10*
+- Version: V1.1.&nbsp;&nbsp;&nbsp;&nbsp;*2021/01/16*
+
 
 
 
